@@ -4,6 +4,7 @@
 
 -- 1.	a. Which prescriber had the highest total number of claims (totaled over all drugs)? Report the npi and
 -- the total number of claims.
+
 SELECT npi, SUM(total_claim_count) AS total_claims
 FROM prescription
 GROUP BY npi
@@ -12,6 +13,7 @@ LIMIT 5 --1881634483 (99707 total claim count)
 
 -- b. Repeat the above, but this time report the nppes_provider_first_name, nppes_provider_last_org_name,  
 -- specialty_description, and the total number of claims.
+
 SELECT p1.nppes_provider_first_name, 
 	p1.nppes_provider_last_org_name, 
 	p1.specialty_description, 
@@ -23,6 +25,7 @@ ORDER BY total_claim_count DESC
 LIMIT 5 -- David Coffey, Family Practice, (4538 total claim count)
 
 -- 2.	a. Which specialty had the most total number of claims (totaled over all drugs)?
+
 SELECT p1.specialty_description AS specialty,
     SUM(p2.total_claim_count) AS total_claims
 FROM prescriber AS p1
@@ -34,6 +37,7 @@ ORDER BY total_claims DESC
 LIMIT 5; --Family Practice (9,752,347)
 
 -- b. Which specialty had the most total number of claims for opioids?
+
 SELECT p1.specialty_description AS specialty,
     SUM (p2.total_claim_count) AS claims_for_opioids
 FROM prescriber AS p1
@@ -53,13 +57,27 @@ SELECT DISTINCT p.specialty_description
 FROM prescriber AS p
 LEFT JOIN prescription AS pr
     ON p.npi = pr.npi
-WHERE pr.npi IS NULL;
+WHERE pr.npi IS NULL; -- 92 rows
 
 -- d. Difficult Bonus: Do not attempt until you have solved all other problems! For each specialty, report the
 -- percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of
 -- opioids?
 
+SELECT p1.specialty_description,
+       SUM(p2.total_claim_count) AS total_claims,
+       SUM(CASE WHEN d.opioid_drug_flag = 'Y' THEN p2.total_claim_count ELSE 0 END) AS opioid_claims,
+       ROUND(
+           (SUM(CASE WHEN d.opioid_drug_flag = 'Y' THEN p2.total_claim_count ELSE 0 END) * 100.0) /
+           SUM(p2.total_claim_count), 2
+       ) AS opioid_percentage
+FROM prescriber AS p1
+JOIN prescription AS p2 ON p1.npi = p2.npi
+JOIN drug AS d ON p2.drug_name = d.drug_name
+GROUP BY p1.specialty_description
+ORDER BY opioid_percentage DESC;
+
 -- 3.	a. Which drug (generic_name) had the highest total drug cost?
+
 SELECT d.generic_name,
     SUM(p.total_drug_cost) AS total_cost
 FROM prescription AS p
@@ -69,13 +87,9 @@ GROUP BY d.generic_name
 ORDER BY total_cost DESC
 LIMIT 5; --Insulin Glargine,hum.rec.anlog ($104,264,066.35)
 
-
-
-SELECT *
-FROM prescription
-
 -- b. Which drug (generic_name) has the hightest total cost per day? Bonus: Round your cost per day column to 2
 -- decimal places. Google ROUND to see how this works.
+
 SELECT d.generic_name,
     round(SUM(p.total_drug_cost) / SUM(p.total_day_supply),2) AS avg_daily_cost
 FROM drug AS d
@@ -89,6 +103,7 @@ LIMIT 5; --C1 Esterase Inhibitor ($3,495.22)
 -- 'opioid' for drugs which have opioid_drug_flag = 'Y', says 'antibiotic' for those drugs which have
 -- antibiotic_drug_flag = 'Y', and says 'neither' for all other drugs. Hint: You may want to use a CASE expression
 -- for this. See https://www.postgresqltutorial.com/postgresql-tutorial/postgresql-case/
+
 SELECT drug_name,
 	CASE
 		WHEN opioid_drug_flag = 'Y' THEN 'opioid'
@@ -99,6 +114,7 @@ FROM drug
 
 -- b. Building off of the query you wrote for part a, determine whether more was spent (total_drug_cost) on opioids
 -- or on antibiotics. Hint: Format the total costs as MONEY for easier comparision.
+
 SELECT 
     CASE 
         WHEN d.opioid_drug_flag = 'Y' THEN 'opioid'
@@ -172,7 +188,6 @@ GROUP BY f.county
 ORDER BY total_population DESC
 LIMIT 5 -- Sevier (population 95,523)
 
-
 -- 6.	a. Find all rows in the prescription table where total_claims is at least 3000. Report the drug_name and
 -- the total_claim_count.
 
@@ -214,7 +229,6 @@ JOIN prescriber AS p2
 	ON p2.npi = p1.npi
 WHERE total_claim_count >=3000
 ORDER BY total_claim_count DESC
-
 
 -- 7.	The goal of this exercise is to generate a full list of all pain management specialists in Nashville and 
 -- the number of claims they had for each opioid. Hint: The results from all 3 parts will have 637 rows.
